@@ -5,7 +5,7 @@
 , args
 }:
 
-with import <nixos/lib/testing.nix> { inherit system; };
+with import <nixpkgs/nixos/lib/testing.nix> { inherit system; };
 with pkgs;
 with lib;
 
@@ -37,7 +37,7 @@ rec {
         modules = getAttr machineName network;
       in
       { name = machineName;
-        value = import <nixos/lib/eval-config.nix> {
+        value = import <nixpkgs/nixos/lib/eval-config.nix> {
           modules =
             modules ++
             defaults ++
@@ -61,10 +61,10 @@ rec {
 
   evalResources = mainModule: _resources:
     mapAttrs (name: defs:
-      (fixMergeModules
-        ([ mainModule ] ++ defs)
-        { inherit pkgs uuid name resources; }
-      ).config) _resources;
+      (evalModules {
+        modules = [ mainModule ] ++ defs;
+        args = { inherit pkgs uuid name resources; };
+      }).config) _resources;
 
   resources.sqsQueues = evalResources ./sqs-queue.nix (zipAttrs resourcesByType.sqsQueues or []);
   resources.ec2KeyPairs = evalResources ./ec2-keypair.nix (zipAttrs resourcesByType.ec2KeyPairs or []);
