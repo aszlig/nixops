@@ -36,7 +36,6 @@ let
           { config, pkgs, ... }:
           { services.openssh.enable = true;
             networking.firewall.enable = false;
-            users.extraUsers.root.openssh.authorizedKeys.keyFiles = [ ./id_test.pub ];
             ${optionalString (n == 1) ''
               environment.systemPackages = [ pkgs.vim ];
             ''}
@@ -62,7 +61,6 @@ let
           { config, pkgs, ... }:
           { services.openssh.enable = true;
             networking.firewall.enable = false;
-            users.extraUsers.root.openssh.authorizedKeys.keyFiles = [ ./id_test.pub ];
             ${optionalString (n == 3) ''
               services.httpd.enable = true;
               services.httpd.adminAddr = "e.dolstra@tudelft.nl";
@@ -141,15 +139,15 @@ makeTest {
         $target1->fail("vim --version");
         $coordinator->succeed("${env} nixops deploy --build-only");
         $coordinator->succeed("${env} nixops deploy");
-        $coordinator->succeed("rm ~/.ssh/id_dsa");
         $target1->succeed("vim --version >&2");
       };
 
-      # Test whether authorized_keys file has been written correctly.
-      subtest "authorized_keys", sub {
-        $coordinator->succeed("${env} nixops ssh target1 -- " .
-                              "'(cat .ssh/authorized_keys; echo xxx) | " .
-                              "grep -q \"^xxx\"'");
+      # Check whether NixOps correctly generated/installed the SSH key.
+      subtest "authorized-keys", sub {
+        $coordinator->succeed("rm ~/.ssh/id_dsa");
+        $coordinator->fail("ssh -o BatchMode=yes".
+                           "    -o StrictHostKeyChecking=no target1 : >&2");
+        $coordinator->succeed("${env} nixops ssh-for-each : >&2");
       };
 
       # Test ‘nixops info’.
